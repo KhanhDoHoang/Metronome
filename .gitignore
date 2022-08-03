@@ -1,0 +1,64 @@
+#eclipse thing
+.cproject
+.dep/
+.project
+.settings/
+des_display/build/
+des_inputs/build/
+des_controller/build/
+my_Nto_Machine1/
+my_Nto_Machine/
+
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+.metadata/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
