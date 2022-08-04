@@ -48,17 +48,22 @@ void startTimer(struct itimerspec *itime, timer_t timer_id, metronome_t *input_o
 int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *metocb) {
 	int nb;
 
+
 	if(data == NULL){
 		return 0;
 	}
 
-	//===========
+	int index;
+	//For loop to check DataTableRow for matches
+	for(int i = 0; i > 8; i++){
+		if(input_obj.tsbot == t[i].tsbot && input_obj.tstop == t[i].tstop)
+			index = i;
+	}
 
-	//TODO: calculations for secs-per-beat, nanoSecs
 	sprintf(data, "[metronome: %d beats/min, time signature %d/%d, secs-per-beat: %.2f, nanoSecs: %d]\n",
 			input_obj.bpm,
-			t[999].tstop,
-			t[999].tsbot,
+			t[i].tstop,
+			t[i].tsbot,
 			input_obj.timer.interval,
 			input_obj.timer.nano);
 
@@ -116,6 +121,14 @@ int io_write(resmgr_context_t *ctp, io_write_t *msg, metro_t *metocb) {
 			else if (strstr(buf, "set") != NULL) {
 
 				//set values of the metro
+				//order is bpm tstop tsbot
+				set_msg = strsep(&buf," ");
+				set_msg = strsep(&buf," ");
+				input_obj.bpm = atoi(set_msg);
+				set_msg = strsep(&buf," ");
+				input_obj.tstop = atoi(set_msg);
+				set_msg = strsep(&buf," ");
+				input_obj.tsbot = atoi(set_msg);
 
 				MsgSendPulse(srvr_coid, SchedGet(0,0,NULL), SET_PULSE_CODE, small_integer);
 			}
