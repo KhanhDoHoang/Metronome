@@ -19,6 +19,7 @@ struct metro_t;
 #include <pthread.h>
 #include <sched.h>
 #include <math.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/netmgr.h>
 #include <sys/neutrino.h>
