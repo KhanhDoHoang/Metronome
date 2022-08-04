@@ -36,11 +36,11 @@ struct metro_t;
 #define STOPPED 1
 #define PAUSED 2
 
-#define DeviceNum 2
+#define NumDevices 2
 #define METRONOME 0
 #define HELP 1
 
-char *devnames[DeviceNum] = {
+char *devnames[NumDevices] = {
 	"/dev/local/metronome",
 	"/dev/local/metronome-help"
 };
@@ -59,9 +59,9 @@ struct Timer_attr{
 
 struct metronome_t {
 	timer_attr timer;
-	int bpm;
-	int tstop;
-	int tsbot;
+	int beatsPerMinute;
+	int timeSignatureTop;
+	int timeSignatureBottom;
 }typedef metronome_t;
 
 struct ioattr_t {
