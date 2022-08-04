@@ -62,8 +62,8 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *metocb) {
 
 	sprintf(data, "[metronome: %d beats/min, time signature %d/%d, secs-per-beat: %.2f, nanoSecs: %d]\n",
 			input_obj.bpm,
-			t[i].tstop,
-			t[i].tsbot,
+			t[index].tstop,
+			t[index].tsbot,
 			input_obj.timer.interval,
 			input_obj.timer.nano);
 
