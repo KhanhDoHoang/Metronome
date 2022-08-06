@@ -101,7 +101,7 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *ocb);
 int io_write(resmgr_context_t *ctp, io_write_t *msg, metro_t *ocb);
 int io_open(resmgr_context_t *ctp, io_open_t *msg, RESMGR_HANDLE_T *handle,void *extra);
 metro_t *metro_calloc(resmgr_context_t *ctp, IOFUNC_ATTR_T *mattr);
-void metro_t_free(metocb_t *mocb);
+void metro_t_free(metro_t *mocb);
 
 
 #endif /* METRONOME_H_ */

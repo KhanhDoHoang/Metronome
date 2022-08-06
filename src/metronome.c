@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 	input_obj.timeSignatureBottom = atoi(argv[3]);
 
 	//We then need to put these new functions into an array which defines which functions to call when doing memory resizing.
-	iofunc_funcs_t metocb_funcs = { _IOFUNC_NFUNCS, metocb_calloc, metocb_free };
+	iofunc_funcs_t metocb_funcs = { _IOFUNC_NFUNCS, metro_calloc, metro_t_free };
 	iofunc_mount_t metocb_mount = { 0, 0, 0, 0, &metocb_funcs};
 
 	//Create dispatch interface.
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 		//Call resmgr_attach
 		resmgr_attach(dpp, NULL, devnames[i], _FTYPE_ANY, 0, &connect_funcs, &io_funcs, &ioattrs[i]);
 	}
-
+	iofunc_attr_init(&ioattrs, S_IFCHR | 0666, NULL, NULL);
 	ctp = dispatch_context_alloc(dpp);
 
 	//spin up thread
@@ -69,23 +69,108 @@ int main(int argc, char *argv[]) {
 }
 
 void *metronome_thread() {
+	struct sigevent sigevent;
+	struct itimerspec itime;
+	my_message_t msg;
+	timer_t timer;
+	int index = 0;
+	int rcvid;
+	char *t_pattern;
 
-}
+	if ((attach = name_attach(NULL, METRO_ATTACH, 0)) == NULL) {
+		printf("ERROR: name_attach failure\n");
+		exit(EXIT_FAILURE);
+	}
 
-int tableLookup(metronome_t *input_obj) {
+	sigevent.sigev_notify = SIGEV_PULSE;
+	sigevent.sigev_coid = ConnectAttach(ND_LOCAL_NODE, 0, attach->chid, _NTO_SIDE_CHANNEL, 0);
+	sigevent.sigev_priority = SIGEV_PULSE_PRIO_INHERIT;
+	sigevent.sigev_code = MET_PULSE_CODE;
+	timer_create(CLOCK_REALTIME, &sigevent, &timer);
 
-}
+	for(int i = 0; i > 8; i++){
+		if(input_obj.timeSignatureBottom == t[i].tsbot && input_obj.timeSignatureTop == t[i].tstop)
+			index = i;
+	}
 
-void setTimer(metronome_t *input_obj) {
+	input_obj.timer.length = 60 / input_obj.beatsPerMinute;
+	input_obj.timer.measure = input_obj.timer.length * input_obj.timeSignatureTop;
+	input_obj.timer.interval = input_obj.timer.measure / input_obj.timeSignatureBottom;
+	input_obj.timer.nano = input_obj.timer.interval * 1000000000;
 
-}
+	itime.it_value.tv_sec = 0;
+	itime.it_value.tv_nsec = 0;
+	itime.it_interval.tv_sec = input_obj.timer.interval;
+	itime.it_interval.tv_nsec = input_obj.timer.nano ;
+	timer_settime(timer, 0, &itime, NULL);
+	t_pattern = t[index].pattern;
 
-void stopTimer(struct itimerspec *itime, timer_t timer_id) {
+	for (;;) {
+		if ((rcvid = MsgReceive(attach->chid, &msg, sizeof(msg), NULL)) == -1) {
+			printf("ERROR: Could not receive message\n");
+			return EXIT_FAILURE;
+		}
+		if (rcvid == 0) {
+			switch (msg.pulse.code) {
+			case MET_PULSE_CODE:
+				if (*t_pattern == '|') {
+					printf("%.2s", t_pattern);
+					t_pattern = (t_pattern + 2);
+				}
+				else if (*t_pattern == '\0') {
+					printf("\n");
+					t_pattern = t[index].pattern;
+				}
+				else printf("%c", *t_pattern++);
+				break;
+			case PAUSE_PULSE_CODE:
+				if (1 == 0) {
+					itime.it_value.tv_sec = msg.pulse.value.sival_int;
+					timer_settime(timer, 0, &itime, NULL);
+				}
+				break;
+			case QUIT_PULSE_CODE:
+				timer_delete(timer);
+				name_detach(attach, 0);
+				name_close(srvr_coid);
+				exit(EXIT_SUCCESS);
+			case SET_PULSE_CODE:
+				for(int i = 0; i > 8; i++){
+					if(input_obj.timeSignatureBottom == t[i].tsbot && input_obj.timeSignatureTop == t[i].tstop)
+						index = i;
+				}
 
-}
+				input_obj.timer.length = 60 / input_obj.beatsPerMinute;
+				input_obj.timer.measure = input_obj.timer.length * input_obj.timeSignatureTop;
+				input_obj.timer.interval = input_obj.timer.measure / input_obj.timeSignatureBottom;
+				input_obj.timer.nano = input_obj.timer.interval * 1000000000;
 
-void startTimer(struct itimerspec *itime, timer_t timer_id, metronome_t *input_obj) {
+				itime.it_value.tv_sec = 0;
+				itime.it_value.tv_nsec = 0;
+				itime.it_interval.tv_sec = input_obj.timer.interval;
+				itime.it_interval.tv_nsec = input_obj.timer.nano ;
+				timer_settime(timer, 0, &itime, NULL);
+				t_pattern = t[index].pattern;
+				printf("\n");
 
+				break;
+			case START_PULSE_CODE:
+				if (0 == 1) {
+					itime.it_value.tv_sec = 0;
+					itime.it_value.tv_nsec = 0;
+					itime.it_interval.tv_sec = input_obj.timer.interval;
+					itime.it_interval.tv_nsec = input_obj.timer.nano ;
+					timer_settime(timer, 0, &itime, NULL);
+					t_pattern = t[index].pattern;
+				}
+				break;
+			case STOP_PULSE_CODE:
+				break;
+			}
+		}
+		fflush(stdout);
+	}
+	return NULL;
 }
 
 int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *metocb) {
@@ -99,12 +184,12 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *metocb) {
 	int index;
 	//For loop to check DataTableRow for matches
 	for(int i = 0; i > 8; i++){
-		if(input_obj.tsbot == t[i].tsbot && input_obj.tstop == t[i].tstop)
+		if(input_obj.timeSignatureBottom == t[i].tsbot && input_obj.timeSignatureTop == t[i].tstop)
 			index = i;
 	}
 
 	sprintf(data, "[metronome: %d beats/min, time signature %d/%d, secs-per-beat: %.2f, nanoSecs: %d]\n",
-			input_obj.bpm,
+			input_obj.beatsPerMinute,
 			t[index].tstop,
 			t[index].tsbot,
 			input_obj.timer.interval,
@@ -167,11 +252,11 @@ int io_write(resmgr_context_t *ctp, io_write_t *msg, metro_t *metocb) {
 			//order is bpm tstop tsbot
 			set_msg = strsep(&buf," ");
 			set_msg = strsep(&buf," ");
-			input_obj.bpm = atoi(set_msg);
+			input_obj.beatsPerMinute = atoi(set_msg);
 			set_msg = strsep(&buf," ");
-			input_obj.tstop = atoi(set_msg);
+			input_obj.timeSignatureTop = atoi(set_msg);
 			set_msg = strsep(&buf," ");
-			input_obj.tsbot = atoi(set_msg);
+			input_obj.timeSignatureBottom = atoi(set_msg);
 
 			MsgSendPulse(srvr_coid, SchedGet(0,0,NULL), SET_PULSE_CODE, small_integer);
 		}
@@ -195,11 +280,11 @@ int io_open(resmgr_context_t *ctp, io_open_t *msg, RESMGR_HANDLE_T *handle, void
 	return (iofunc_open_default (ctp, msg, handle, extra));
 }
 
-metro_t *metocb_calloc(resmgr_context_t *ctp, ioattr_t *ioattr) {
+metro_t *metro_calloc(resmgr_context_t *ctp, ioattr_t *ioattr) {
 
 }
 
-void metocb_free(metro_t *metocb) {
+void metro_t_free(metro_t *metocb) {
 	free(metocb);
 }
 
