@@ -72,13 +72,13 @@ void *metronome_thread() {
 	struct sigevent sigevent;
 	struct itimerspec itime;
 	my_message_t msg;
-	timer_t timer_id;
+	timer_t timer;
 	int index = 0;
 	int rcvid;
-	char *t_pattern;
+	char *pattern;
 
 	if ((attach = name_attach(NULL, METRO_ATTACH, 0)) == NULL) {
-		printf("ERROR: *metronome_thread() name_attach failure\n");
+		printf("ERROR: name_attach failure\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -86,7 +86,8 @@ void *metronome_thread() {
 	sigevent.sigev_coid = ConnectAttach(ND_LOCAL_NODE, 0, attach->chid, _NTO_SIDE_CHANNEL, 0);
 	sigevent.sigev_priority = SIGEV_PULSE_PRIO_INHERIT;
 	sigevent.sigev_code = MET_PULSE_CODE;
-	timer_create(CLOCK_REALTIME, &sigevent, &timer_id);
+
+	timer_create(CLOCK_REALTIME, &sigevent, &timer);
 
 	for (int i = 0; i < 8; i++) {
 		if (t[i].tsbot == input_obj.timeSignatureBottom && t[i].tstop == input_obj.timeSignatureTop)
@@ -94,16 +95,16 @@ void *metronome_thread() {
 	}
 
 	input_obj.timer.length = (double) 60 / input_obj.beatsPerMinute;
-	input_obj.timer.measure = input_obj.timer.length * 2;
+	input_obj.timer.measure = input_obj.timer.length * input_obj.timeSignatureTop;
 	input_obj.timer.interval = input_obj.timer.measure / input_obj.timeSignatureBottom;
-	input_obj.timer.nano = (input_obj.timer.interval - (int) input_obj.timer.interval) * 1e+9;
+	input_obj.timer.nano = input_obj.timer.interval * 1000000000;
 
 	itime.it_value.tv_sec = 1;
 	itime.it_value.tv_nsec = 0;
 	itime.it_interval.tv_sec = input_obj.timer.interval;
 	itime.it_interval.tv_nsec = input_obj.timer.nano;
-	timer_settime(timer_id, 0, &itime, NULL);
-	t_pattern = t[index].pattern;
+	timer_settime(timer, 0, &itime, NULL);
+	pattern = t[index].pattern;
 
 	for (;;) {
 		if ((rcvid = MsgReceive(attach->chid, &msg, sizeof(msg), NULL)) == -1) {
@@ -113,22 +114,22 @@ void *metronome_thread() {
 		if (rcvid == 0) {
 			switch (msg.pulse.code) {
 			case MET_PULSE_CODE:
-				if (*t_pattern == '|') {
-					printf("%.2s", t_pattern);
-					t_pattern = (t_pattern + 2);
+				if (*pattern == '|') {
+					printf("%.2s", pattern);
+					pattern = (pattern + 2);
 				}
-				else if (*t_pattern == '\0') {
+				else if (*pattern == '\0') {
 					printf("\n");
-					t_pattern = t[index].pattern;
+					pattern = t[index].pattern;
 				}
-				else printf("%c", *t_pattern++);
+				else printf("%c", *pattern++);
 				break;
 			case PAUSE_PULSE_CODE:
 				itime.it_value.tv_sec = msg.pulse.value.sival_int;
-				timer_settime(timer_id, 0, &itime, NULL);
+				timer_settime(timer, 0, &itime, NULL);
 				break;
 			case QUIT_PULSE_CODE:
-				timer_delete(timer_id);
+				timer_delete(timer);
 				name_detach(attach, 0);
 				name_close(srvr_coid);
 				exit(EXIT_SUCCESS);
@@ -138,18 +139,18 @@ void *metronome_thread() {
 						index = i;
 				}
 
-				t_pattern = t[index].pattern;
+				pattern = t[index].pattern;
 				input_obj.timer.length = (double) 60 / input_obj.beatsPerMinute;
-				input_obj.timer.measure = input_obj.timer.length * 2;
+				input_obj.timer.measure = input_obj.timer.length * input_obj.timeSignatureTop;
 				input_obj.timer.interval = input_obj.timer.measure / input_obj.timeSignatureBottom;
-				input_obj.timer.nano = (input_obj.timer.interval - (int) input_obj.timer.interval) * 1e+9;
+				input_obj.timer.nano = input_obj.timer.interval * 1000000000;
 
 				itime.it_value.tv_sec = 1;
 				itime.it_value.tv_nsec = 0;
 				itime.it_interval.tv_sec = input_obj.timer.interval;
 				itime.it_interval.tv_nsec = input_obj.timer.nano;
-				timer_settime(timer_id, 0, &itime, NULL);
-				t_pattern = t[index].pattern;
+				timer_settime(timer, 0, &itime, NULL);
+				pattern = t[index].pattern;
 				printf("\n");
 				break;
 			case START_PULSE_CODE:
@@ -157,12 +158,12 @@ void *metronome_thread() {
 				itime.it_value.tv_nsec = 0;
 				itime.it_interval.tv_sec = input_obj.timer.interval;
 				itime.it_interval.tv_nsec = input_obj.timer.nano;
-				timer_settime(timer_id, 0, &itime, NULL);
-				t_pattern = t[index].pattern;
+				timer_settime(timer, 0, &itime, NULL);
+				pattern = t[index].pattern;
 				break;
 			case STOP_PULSE_CODE:
 				itime.it_value.tv_sec = 0;
-				timer_settime(timer_id, 0, &itime, NULL);
+				timer_settime(timer, 0, &itime, NULL);
 				break;
 			}
 		}
@@ -174,25 +175,16 @@ void *metronome_thread() {
 int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *metocb) {
 	int nb;
 
-
 	if(data == NULL){
 		return 0;
 	}
 
-	int index;
-	//For loop to check DataTableRow for matches
-	for(int i = 0; i > 8; i++){
-		if(input_obj.timeSignatureBottom == t[i].tsbot && input_obj.timeSignatureTop == t[i].tstop)
-			index = i;
-	}
-
 	sprintf(data, "[metronome: %d beats/min, time signature %d/%d, secs-per-beat: %.2f, nanoSecs: %d]\n",
 			input_obj.beatsPerMinute,
-			t[index].tstop,
-			t[index].tsbot,
+			input_obj.timeSignatureTop,
+			input_obj.timeSignatureBottom,
 			input_obj.timer.interval,
 			input_obj.timer.nano);
-
 
 	nb = strlen(data);
 
