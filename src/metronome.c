@@ -72,13 +72,13 @@ void *metronome_thread() {
 	struct sigevent sigevent;
 	struct itimerspec itime;
 	my_message_t msg;
-	timer_t timer;
+	timer_t timer_id;
 	int index = 0;
 	int rcvid;
 	char *t_pattern;
 
 	if ((attach = name_attach(NULL, METRO_ATTACH, 0)) == NULL) {
-		printf("ERROR: name_attach failure\n");
+		printf("ERROR: *metronome_thread() name_attach failure\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -86,23 +86,23 @@ void *metronome_thread() {
 	sigevent.sigev_coid = ConnectAttach(ND_LOCAL_NODE, 0, attach->chid, _NTO_SIDE_CHANNEL, 0);
 	sigevent.sigev_priority = SIGEV_PULSE_PRIO_INHERIT;
 	sigevent.sigev_code = MET_PULSE_CODE;
-	timer_create(CLOCK_REALTIME, &sigevent, &timer);
+	timer_create(CLOCK_REALTIME, &sigevent, &timer_id);
 
-	for(int i = 0; i > 8; i++){
-		if(input_obj.timeSignatureBottom == t[i].tsbot && input_obj.timeSignatureTop == t[i].tstop)
+	for (int i = 0; i < 8; i++) {
+		if (t[i].tsbot == input_obj.timeSignatureBottom && t[i].tstop == input_obj.timeSignatureTop)
 			index = i;
 	}
 
-	input_obj.timer.length = 60 / input_obj.beatsPerMinute;
-	input_obj.timer.measure = input_obj.timer.length * input_obj.timeSignatureTop;
+	input_obj.timer.length = (double) 60 / input_obj.beatsPerMinute;
+	input_obj.timer.measure = input_obj.timer.length * 2;
 	input_obj.timer.interval = input_obj.timer.measure / input_obj.timeSignatureBottom;
-	input_obj.timer.nano = input_obj.timer.interval * 1000000000;
+	input_obj.timer.nano = (input_obj.timer.interval - (int) input_obj.timer.interval) * 1e+9;
 
-	itime.it_value.tv_sec = 0;
+	itime.it_value.tv_sec = 1;
 	itime.it_value.tv_nsec = 0;
 	itime.it_interval.tv_sec = input_obj.timer.interval;
-	itime.it_interval.tv_nsec = input_obj.timer.nano ;
-	timer_settime(timer, 0, &itime, NULL);
+	itime.it_interval.tv_nsec = input_obj.timer.nano;
+	timer_settime(timer_id, 0, &itime, NULL);
 	t_pattern = t[index].pattern;
 
 	for (;;) {
@@ -124,47 +124,45 @@ void *metronome_thread() {
 				else printf("%c", *t_pattern++);
 				break;
 			case PAUSE_PULSE_CODE:
-				if (1 == 0) {
-					itime.it_value.tv_sec = msg.pulse.value.sival_int;
-					timer_settime(timer, 0, &itime, NULL);
-				}
+				itime.it_value.tv_sec = msg.pulse.value.sival_int;
+				timer_settime(timer_id, 0, &itime, NULL);
 				break;
 			case QUIT_PULSE_CODE:
-				timer_delete(timer);
+				timer_delete(timer_id);
 				name_detach(attach, 0);
 				name_close(srvr_coid);
 				exit(EXIT_SUCCESS);
 			case SET_PULSE_CODE:
-				for(int i = 0; i > 8; i++){
-					if(input_obj.timeSignatureBottom == t[i].tsbot && input_obj.timeSignatureTop == t[i].tstop)
+				for (int i = 0; i < 8; i++) {
+					if (t[i].tsbot == input_obj.timeSignatureBottom && t[i].tstop == input_obj.timeSignatureTop)
 						index = i;
 				}
 
-				input_obj.timer.length = 60 / input_obj.beatsPerMinute;
-				input_obj.timer.measure = input_obj.timer.length * input_obj.timeSignatureTop;
+				t_pattern = t[index].pattern;
+				input_obj.timer.length = (double) 60 / input_obj.beatsPerMinute;
+				input_obj.timer.measure = input_obj.timer.length * 2;
 				input_obj.timer.interval = input_obj.timer.measure / input_obj.timeSignatureBottom;
-				input_obj.timer.nano = input_obj.timer.interval * 1000000000;
+				input_obj.timer.nano = (input_obj.timer.interval - (int) input_obj.timer.interval) * 1e+9;
 
-				itime.it_value.tv_sec = 0;
+				itime.it_value.tv_sec = 1;
 				itime.it_value.tv_nsec = 0;
 				itime.it_interval.tv_sec = input_obj.timer.interval;
-				itime.it_interval.tv_nsec = input_obj.timer.nano ;
-				timer_settime(timer, 0, &itime, NULL);
+				itime.it_interval.tv_nsec = input_obj.timer.nano;
+				timer_settime(timer_id, 0, &itime, NULL);
 				t_pattern = t[index].pattern;
 				printf("\n");
-
 				break;
 			case START_PULSE_CODE:
-				if (0 == 1) {
-					itime.it_value.tv_sec = 0;
-					itime.it_value.tv_nsec = 0;
-					itime.it_interval.tv_sec = input_obj.timer.interval;
-					itime.it_interval.tv_nsec = input_obj.timer.nano ;
-					timer_settime(timer, 0, &itime, NULL);
-					t_pattern = t[index].pattern;
-				}
+				itime.it_value.tv_sec = 1;
+				itime.it_value.tv_nsec = 0;
+				itime.it_interval.tv_sec = input_obj.timer.interval;
+				itime.it_interval.tv_nsec = input_obj.timer.nano;
+				timer_settime(timer_id, 0, &itime, NULL);
+				t_pattern = t[index].pattern;
 				break;
 			case STOP_PULSE_CODE:
+				itime.it_value.tv_sec = 0;
+				timer_settime(timer_id, 0, &itime, NULL);
 				break;
 			}
 		}
