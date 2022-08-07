@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 
 	if(argc != 4){
 		perror("Incorrect number of command line args\n");
-		return (EXIT_FAILURE);
+		exit (EXIT_FAILURE);
 	}
 
 	input_obj.beatsPerMinute = atoi(argv[1]);
@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 	//Create dispatch interface.
 	if ((dpp = dispatch_create()) == NULL) {
 		fprintf (stderr, "%s:  Unable to allocate dispatch context.\n", argv [0]);
-		return (EXIT_FAILURE);
+		exit (EXIT_FAILURE);
 	}
 
 	//Initialize the default io funcs.
@@ -78,7 +78,7 @@ void *metronome_thread() {
 	char *pattern;
 
 	if ((attach = name_attach(NULL, METRO_ATTACH, 0)) == NULL) {
-		printf("ERROR: name_attach failure\n");
+		perror("ERROR: name_attach failure\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -124,6 +124,18 @@ void *metronome_thread() {
 				}
 				else printf("%c", *pattern++);
 				break;
+			case START_PULSE_CODE:
+				itime.it_value.tv_sec = 1;
+				itime.it_value.tv_nsec = 0;
+				itime.it_interval.tv_sec = input_obj.timer.interval;
+				itime.it_interval.tv_nsec = input_obj.timer.nano;
+				timer_settime(timer, 0, &itime, NULL);
+				pattern = t[index].pattern;
+				break;
+			case STOP_PULSE_CODE:
+				itime.it_value.tv_sec = 0;
+				timer_settime(timer, 0, &itime, NULL);
+				break;
 			case PAUSE_PULSE_CODE:
 				itime.it_value.tv_sec = msg.pulse.value.sival_int;
 				timer_settime(timer, 0, &itime, NULL);
@@ -152,18 +164,6 @@ void *metronome_thread() {
 				timer_settime(timer, 0, &itime, NULL);
 				pattern = t[index].pattern;
 				printf("\n");
-				break;
-			case START_PULSE_CODE:
-				itime.it_value.tv_sec = 1;
-				itime.it_value.tv_nsec = 0;
-				itime.it_interval.tv_sec = input_obj.timer.interval;
-				itime.it_interval.tv_nsec = input_obj.timer.nano;
-				timer_settime(timer, 0, &itime, NULL);
-				pattern = t[index].pattern;
-				break;
-			case STOP_PULSE_CODE:
-				itime.it_value.tv_sec = 0;
-				timer_settime(timer, 0, &itime, NULL);
 				break;
 			}
 		}
@@ -271,7 +271,10 @@ int io_open(resmgr_context_t *ctp, io_open_t *msg, RESMGR_HANDLE_T *handle, void
 }
 
 metro_t *metro_calloc(resmgr_context_t *ctp, ioattr_t *ioattr) {
-
+	metro_t *metro;
+	metro = calloc(1, sizeof(metro));
+	metro->ocb.offset = 0;
+	return metro;
 }
 
 void metro_t_free(metro_t *metocb) {

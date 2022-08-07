@@ -94,9 +94,9 @@ struct DataTableRow t[] = {
 
 void *metronome_thread();
 int tableLookup(metronome_t *input_obj);
-void setTimer(metronome_t *input_obj);
-void startTimer(struct itimerspec * itime, timer_t timer_id, metronome_t *input_obj);
-void stopTimer(struct itimerspec * itime, timer_t timer_id);
+//void setTimer(metronome_t *input_obj);
+//void startTimer(struct itimerspec * itime, timer_t timer_id, metronome_t *input_obj);
+//void stopTimer(struct itimerspec * itime, timer_t timer_id);
 int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *ocb);
 int io_write(resmgr_context_t *ctp, io_write_t *msg, metro_t *ocb);
 int io_open(resmgr_context_t *ctp, io_open_t *msg, RESMGR_HANDLE_T *handle,void *extra);
