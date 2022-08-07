@@ -54,7 +54,7 @@ struct Timer_attr{
 	double length;
 	double measure;
 	double interval;
-	double nano;
+	long nano;
 }typedef timer_attr;
 
 struct metronome_t {

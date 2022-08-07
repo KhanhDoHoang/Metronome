@@ -95,9 +95,9 @@ void *metronome_thread() {
 	}
 
 	input_obj.timer.length = (double) 60 / input_obj.beatsPerMinute;
-	input_obj.timer.measure = input_obj.timer.length * input_obj.timeSignatureTop;
+	input_obj.timer.measure = input_obj.timer.length * 2;
 	input_obj.timer.interval = input_obj.timer.measure / input_obj.timeSignatureBottom;
-	input_obj.timer.nano = input_obj.timer.interval * 1000000000;
+	input_obj.timer.nano = input_obj.timer.interval * 1e+9;
 
 	itime.it_value.tv_sec = 1;
 	itime.it_value.tv_nsec = 0;
@@ -153,9 +153,9 @@ void *metronome_thread() {
 
 				pattern = t[index].pattern;
 				input_obj.timer.length = (double) 60 / input_obj.beatsPerMinute;
-				input_obj.timer.measure = input_obj.timer.length * input_obj.timeSignatureTop;
+				input_obj.timer.measure = input_obj.timer.length * 2;
 				input_obj.timer.interval = input_obj.timer.measure / input_obj.timeSignatureBottom;
-				input_obj.timer.nano = input_obj.timer.interval * 1000000000;
+				input_obj.timer.nano = input_obj.timer.interval * 1e+9;
 
 				itime.it_value.tv_sec = 1;
 				itime.it_value.tv_nsec = 0;
@@ -179,7 +179,7 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *metocb) {
 		return 0;
 	}
 
-	sprintf(data, "[metronome: %d beats/min, time signature %d/%d, secs-per-beat: %.2f, nanoSecs: %d]\n",
+	sprintf(data, "[metronome: %d beats/min, time signature %d/%d, secs-per-beat: %.2f, nanoSecs: %ld]\n",
 			input_obj.beatsPerMinute,
 			input_obj.timeSignatureTop,
 			input_obj.timeSignatureBottom,
