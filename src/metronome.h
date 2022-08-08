@@ -19,6 +19,7 @@ struct metro_t;
 #include <pthread.h>
 #include <sched.h>
 #include <math.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/netmgr.h>
 #include <sys/neutrino.h>
@@ -35,11 +36,11 @@ struct metro_t;
 #define STOPPED 1
 #define PAUSED 2
 
-#define DeviceNum 2
+#define NumDevices 2
 #define METRONOME 0
 #define HELP 1
 
-char *devnames[DeviceNum] = {
+char *devnames[NumDevices] = {
 	"/dev/local/metronome",
 	"/dev/local/metronome-help"
 };
@@ -53,14 +54,14 @@ struct Timer_attr{
 	double length;
 	double measure;
 	double interval;
-	double nano;
+	long nano;
 }typedef timer_attr;
 
 struct metronome_t {
 	timer_attr timer;
-	int bpm;
-	int tstop;
-	int tsbot;
+	int beatsPerMinute;
+	int timeSignatureTop;
+	int timeSignatureBottom;
 }typedef metronome_t;
 
 struct ioattr_t {
@@ -93,14 +94,14 @@ struct DataTableRow t[] = {
 
 void *metronome_thread();
 int tableLookup(metronome_t *input_obj);
-void setTimer(metronome_t *input_obj);
-void startTimer(struct itimerspec * itime, timer_t timer_id, metronome_t *input_obj);
-void stopTimer(struct itimerspec * itime, timer_t timer_id);
+//void setTimer(metronome_t *input_obj);
+//void startTimer(struct itimerspec * itime, timer_t timer_id, metronome_t *input_obj);
+//void stopTimer(struct itimerspec * itime, timer_t timer_id);
 int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *ocb);
 int io_write(resmgr_context_t *ctp, io_write_t *msg, metro_t *ocb);
 int io_open(resmgr_context_t *ctp, io_open_t *msg, RESMGR_HANDLE_T *handle,void *extra);
 metro_t *metro_calloc(resmgr_context_t *ctp, IOFUNC_ATTR_T *mattr);
-void metro_t_free(metocb_t *mocb);
+void metro_t_free(metro_t *mocb);
 
 
 #endif /* METRONOME_H_ */
