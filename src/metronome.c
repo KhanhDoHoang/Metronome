@@ -28,35 +28,29 @@ int main(int argc, char *argv[]) {
 	input_obj.timeSignatureTop = atoi(argv[2]);
 	input_obj.timeSignatureBottom = atoi(argv[3]);
 
-	//We then need to put these new functions into an array which defines which functions to call when doing memory resizing.
 	iofunc_funcs_t metocb_funcs = { _IOFUNC_NFUNCS, metro_calloc, metro_t_free };
 	iofunc_mount_t metocb_mount = { 0, 0, 0, 0, &metocb_funcs};
 
-	//Create dispatch interface.
 	if ((dpp = dispatch_create()) == NULL) {
 		fprintf (stderr, "%s:  Unable to allocate dispatch context.\n", argv [0]);
 		exit (EXIT_FAILURE);
 	}
 
-	//Initialize the default io funcs.
 	iofunc_func_init(_RESMGR_CONNECT_NFUNCS, &connect_funcs, _RESMGR_IO_NFUNCS, &io_funcs);
 	connect_funcs.open = io_open;
-	//Overload the io funcs we care about handling
 	io_funcs.read = io_read;
 	io_funcs.write = io_write;
 
-	//The final step is to add these functions to the iofunc_attr_t structure we setup before calling resmgr_attach.
 	for (int i = 0; i < NumDevices; i++) {
 		iofunc_attr_init(&ioattrs[i].attr, S_IFCHR | 0666, NULL, NULL);
 		ioattrs[i].device = i;
 		ioattrs[i].attr.mount = &metocb_mount;
-		//Call resmgr_attach
 		resmgr_attach(dpp, NULL, devnames[i], _FTYPE_ANY, 0, &connect_funcs, &io_funcs, &ioattrs[i]);
 	}
-
-	//	iofunc_attr_init(&ioattrs, S_IFCHR | 0666, NULL, NULL);
 	ctp = dispatch_context_alloc(dpp);
 
+	//spin up thread
+	//create the metronome thread in-between calling resmgr_attach() and while(1) { ctp = dispatch_block(... }
 	pthread_attr_init(&thread_attr);
 	pthread_create(NULL, &thread_attr, &metronome_thread, &input_obj);
 
@@ -112,9 +106,8 @@ void *metronome_thread() {
 	for (;;) {
 		if ((rcvid = MsgReceive(attach->chid, &msg, sizeof(msg), NULL)) == -1) {
 			printf("ERROR: Could not receive message\n");
-			exit (EXIT_FAILURE);
+			exit( EXIT_FAILURE);
 		}
-
 		if (rcvid == 0) {
 			switch (msg.pulse.code) {
 			case MET_PULSE_CODE:
@@ -183,40 +176,33 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *metocb) {
 		return 0;
 	}
 
-	if (metocb->ocb.attr->device == METRONOME) {
-		sprintf(data, "[metronome: %d beats/min, time signature %d/%d, secs-per-beat: %.2f, nanoSecs: %ld]\n",
-				input_obj.beatsPerMinute,
-				input_obj.timeSignatureTop,
-				input_obj.timeSignatureBottom,
-				input_obj.timer.interval,
-				input_obj.timer.nano);
-	} else if (metocb->ocb.attr->device == HELP){
-		sprintf(data,
-				"Metronome Resource Manager (ResMgr)\n"
+	if (metocb->ocb.attr->device == HELP) {
+		printf( "Metronome Resource Manager (ResMgr)\n"
 				"\nUsage: metronome <bpm> <ts-top> <ts-bottom>\n\nAPI:\n"
 				"pause[1-9]                     -pause the metronome for 1-9 seconds\n"
 				"quit                           -quit the metronome\n"
 				"set <bpm> <ts-top> <ts-bottom> -set the metronome to <bpm> ts-top/ts-bottom\n"
 				"start                          -start the metronome from stopped state\n"
 				"stop                           -stop the metronome; use 'start' to resume\n");
+	} else {
+		sprintf(data, "[metronome: %d beats/min, time signature %d/%d, secs-per-beat: %.2f, nanoSecs: %ld]\n",
+				input_obj.beatsPerMinute,
+				input_obj.timeSignatureTop,
+				input_obj.timeSignatureBottom,
+				input_obj.timer.interval,
+				input_obj.timer.nano);
 	}
 
 	nb = strlen(data);
 
-	//test to see if we have already sent the whole message
 	if (metocb->ocb.offset == nb)
 		return 0;
 
-	//We will return which ever is smaller the size of our data or the size of the buffer
 	nb = min(nb, msg->i.nbytes);
-	//Set the number of bytes we will return
 	_IO_SET_READ_NBYTES(ctp, nb);
-	//Copy data into reply buffer
 	SETIOV(ctp->iov, data, nb);
-	//update offset into our data used to determine start position for next read
 	metocb->ocb.offset += nb;
 
-	//If we are going to send any bytes update the access time for this resource
 	if (nb > 0)
 		metocb->ocb.flags |= IOFUNC_ATTR_ATIME;
 
@@ -239,12 +225,13 @@ int io_write(resmgr_context_t *ctp, io_write_t *msg, metro_t *metocb) {
 		char *buf;
 		char *pause_msg;
 		char *set_msg;
+		int i;
 		int small_integer = 0;
 		buf = (char *)(msg+1);
 
 
 		if(strstr(buf, "pause") != NULL){
-			for(int i = 0; i < 2; i++){
+			for(i = 0; i < 2; i++){
 				pause_msg = strsep(&buf, " ");
 			}
 			small_integer = atoi(pause_msg);
@@ -264,6 +251,7 @@ int io_write(resmgr_context_t *ctp, io_write_t *msg, metro_t *metocb) {
 			MsgSendPulse(srvr_coid, SchedGet(0,0,NULL), STOP_PULSE_CODE, small_integer);
 		}
 		else if (strstr(buf, "set") != NULL) {
+
 			//set values of the metro
 			//order is bpm tstop tsbot
 			set_msg = strsep(&buf," ");
