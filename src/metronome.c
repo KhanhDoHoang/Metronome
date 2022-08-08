@@ -177,7 +177,7 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, metro_t *metocb) {
 	}
 
 	if (metocb->ocb.attr->device == HELP) {
-		printf( "Metronome Resource Manager (ResMgr)\n"
+		sprintf(data, "Metronome Resource Manager (ResMgr)\n"
 				"\nUsage: metronome <bpm> <ts-top> <ts-bottom>\n\nAPI:\n"
 				"pause[1-9]                     -pause the metronome for 1-9 seconds\n"
 				"quit                           -quit the metronome\n"
@@ -216,6 +216,7 @@ int io_write(resmgr_context_t *ctp, io_write_t *msg, metro_t *metocb) {
 	if (metocb->ocb.attr->device == HELP) {
 		nb = msg->i.nbytes;
 		_IO_SET_WRITE_NBYTES(ctp, nb);
+		printf("\nPlease enter a valid command (cat /dev/local/metronome-help for legal commands\n");
 		return _RESMGR_NPARTS(0);
 	}
 
