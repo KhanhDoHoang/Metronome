@@ -1,6 +1,6 @@
 # Metronome
 
-The program operates a metronome using timers, and accepts pulses to pause the metronome for a number of seconds. To avoid noisy chaos in the lab, we’ll use visual output for the “click” of the metronome. A functional requirement has the metronome pause, which is done from the console using the echo command to send (i.e. write) pause 4 to the metronome device:
+The program operates a metronome using timers, and accepts pulses to pause the metronome for a number of seconds. Use visual output for the “click” of the metronome. A functional requirement has the metronome pause, which is done from the console using the echo command to send (i.e. write) pause 4 to the metronome device:
 
     # echo pause 4 > /dev/local/metronome
     
